@@ -160,6 +160,10 @@ body{
     transform:translateX(0);
     transition:.4s ease-out;
 }
+  .sidebar.hidden{
+    transform:translateX(-120%);
+
+}
 
 .panel-title{
     font-family:'Syne Mono', monospace;
@@ -388,29 +392,34 @@ body{
 
 .marker-lokasi{
 
-    border-radius:50%;
+    width:28px !important;
+    height:28px !important;
+
+    border-radius:50% 50% 50% 0;
+
+    transform:rotate(-45deg);
 
     cursor:pointer;
 
+    border:2px solid white;
+
     transition:.25s;
 
-    animation:pulseMarker 2s infinite;
+    position:relative;
+
+    box-shadow:
+        0 2px 8px rgba(0,0,0,.35);
+
 }
 
 .marker-lokasi:hover{
-    transform:scale(1.5);
+
+    transform:
+        rotate(-45deg)
+        scale(1.2);
+
 }
 
-@keyframes pulseMarker{
-
-    0%,100%{
-        opacity:1;
-    }
-
-    50%{
-        opacity:.75;
-    }
-}
 
 /* ==========================================================
    POPUP
@@ -530,7 +539,51 @@ body{
 ::-webkit-scrollbar-thumb{
     background:var(--aksen-cyan);
 }
+.sidebar.hidden{
 
+    transform:translateX(-120%);
+
+}
+
+.toggle-sidebar{
+
+    position:fixed;
+
+    top:60px;
+
+    left:15px;
+
+    z-index:2000;
+
+    width:45px;
+
+    height:45px;
+
+    border:none;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    font-size:20px;
+
+    color:white;
+
+    background:rgba(0,0,0,.75);
+
+    border:1px solid rgba(0,255,209,.3);
+
+    backdrop-filter:blur(10px);
+
+}
+
+.toggle-sidebar:hover{
+
+    transform:scale(1.05);
+
+}
+
+</style>
 </style>
 </head>
 
@@ -575,11 +628,14 @@ body{
 <!-- =======================================================
      SIDEBAR
 ======================================================= -->
-
+<button id="toggleSidebar" class="toggle-sidebar">
+☜
+</button>
+  
 <div class="sidebar" id="sidebar">
 
     <div class="panel-title">
-        JAMBI SPATIAL INTEL
+        KELOMPOK 3
     </div>
 
     <div class="coord-box" id="liveCoord">
@@ -624,18 +680,64 @@ body{
         </div>
 
     </div>
+<div class="section">
 
-    <div class="section">
+    <div class="section-label">
+        HARGA MAKSIMUM
+    </div>
 
-        <button
-            id="btnNearest"
-            class="btn-primary">
+    <input
+        type="range"
+        id="priceSlider"
+        min="0"
+        max="1000000"
+        step="1000"
+        value="1000000"
+        class="radius-slider">
 
-            TEMUKAN 5 TERDEKAT
+    <div
+        id="priceLabel"
+        class="radius-value">
 
-        </button>
+        Maksimum: Rp 1.000.000
 
     </div>
+
+    <input
+        type="number"
+        id="priceInput"
+        value="1000000"
+        min="0"
+        max="1000000"
+        class="search-input">
+
+</div>
+
+<div class="section">
+
+    <div class="section-label">
+        RATING MINIMUM
+    </div>
+
+    <input
+        type="range"
+        id="ratingSlider"
+        min="0"
+        max="5"
+        step="0.1"
+        value="0"
+        class="radius-slider">
+
+    <div
+        id="ratingLabel"
+        class="radius-value">
+
+        Rating: 0+
+
+    </div>
+
+</div>
+
 
     <div class="section">
 
@@ -643,54 +745,38 @@ body{
             FILTER KATEGORI
         </div>
 
-        <div class="category-grid">
+<div class="category-grid">
 
-            <label class="category-item">
-                <input checked type="checkbox" value="Alam">
-                Alam
-            </label>
+<label class="category-item">
+    <input checked type="checkbox" value="Cafe">
+    Cafe
+</label>
 
-            <label class="category-item">
-                <input checked type="checkbox" value="Budaya">
-                Budaya
-            </label>
+<label class="category-item">
+    <input checked type="checkbox" value="Apotek">
+    Apotek
+</label>
 
-            <label class="category-item">
-                <input checked type="checkbox" value="Kuliner">
-                Kuliner
-            </label>
+<label class="category-item">
+    <input checked type="checkbox" value="Minuman">
+    Minuman
+</label>
 
-            <label class="category-item">
-                <input checked type="checkbox" value="Sejarah">
-                Sejarah
-            </label>
+<label class="category-item">
+    <input checked type="checkbox" value="Masjid">
+    Masjid
+</label>
 
-            <label class="category-item">
-                <input checked type="checkbox" value="Religi">
-                Religi
-            </label>
-
-        </div>
-
-    </div>
-
+<label class="category-item">
+    <input checked type="checkbox" value="Laundry">
+    Laundry
+</label>
 </div>
-
+    </div>
+</div>
 <!-- =======================================================
      PANEL HASIL KNN
 ======================================================= -->
-
-<div
-    class="results-panel"
-    id="resultsPanel">
-
-    <div class="results-title">
-        5 LOKASI TERDEKAT
-    </div>
-
-    <div id="resultsContainer"></div>
-
-</div>
 
 <!-- =======================================================
      ROUTE INFO
@@ -732,11 +818,11 @@ const CONFIG = {
 
 const CATEGORY_COLORS = {
 
-    Alam:"#00FF88",
-    Budaya:"#FFD700",
-    Kuliner:"#FF6B35",
-    Sejarah:"#C084FC",
-    Religi:"#38BDF8"
+    Cafe:"#F97316",
+    Apotek:"#22C55E",
+    Minuman:"#06B6D4",
+    Masjid:"#38BDF8",
+    Laundry:"#A855F7"
 
 };
 
@@ -759,6 +845,12 @@ let radiusCircleSource = null;
 
 let radiusCircleLayer = null;
 
+let radiusConnectionLines = [];
+
+let currentMaxPrice = 1000000;
+
+let currentMinRating = 0;
+  
 /* ==========================================================
    BAGIAN 2 AKAN DIMULAI DI SINI
 ========================================================== */
@@ -767,227 +859,358 @@ let radiusCircleLayer = null;
 ========================================================== */
 
 const WISATA_DATA = [
-
 {
-id:1,
-nama:"Candi Muaro Jambi",
-kategori:"Sejarah",
-lat:-1.4928,
-lng:103.6674,
-deskripsi:"Kompleks percandian Hindu-Buddha terbesar di Asia Tenggara. Menjadi pusat peradaban Melayu kuno dan tujuan wisata sejarah utama Provinsi Jambi.",
-rating:4.9,
-pengunjung_per_bulan:25000
-},
-
-{
-id:2,
-nama:"Danau Sipin",
-kategori:"Alam",
-lat:-1.6108,
-lng:103.6240,
-deskripsi:"Danau alami yang berada di tengah Kota Jambi. Dikenal dengan wisata perahu tradisional dan panorama matahari terbenam.",
-rating:4.5,
-pengunjung_per_bulan:18000
-},
-
-{
-id:3,
-nama:"Taman Rimba Jambi",
-kategori:"Alam",
-lat:-1.6203,
-lng:103.6027,
-deskripsi:"Kawasan konservasi satwa dan ruang hijau kota yang cocok untuk edukasi keluarga.",
-rating:4.2,
-pengunjung_per_bulan:9000
-},
-
-{
-id:4,
-nama:"Pasar Angso Duo",
-kategori:"Kuliner",
-lat:-1.5964,
-lng:103.6150,
-deskripsi:"Pusat perdagangan terbesar di Jambi dengan beragam kuliner khas daerah dan hasil bumi lokal.",
-rating:4.3,
-pengunjung_per_bulan:40000
-},
-
-{
-id:5,
-nama:"Masjid Agung Al-Falah",
-kategori:"Religi",
-lat:-1.5988,
-lng:103.6134,
-deskripsi:"Masjid ikonik Kota Jambi yang terkenal dengan arsitektur tanpa kubah dan aktivitas keagamaan yang aktif.",
-rating:4.9,
-pengunjung_per_bulan:22000
-},
-
-{
-id:6,
-nama:"Jembatan Gentala Arasy",
-kategori:"Budaya",
-lat:-1.5898,
-lng:103.6156,
-deskripsi:"Landmark wisata tepi Sungai Batanghari yang menghubungkan kawasan budaya dan ruang publik kota.",
-rating:4.7,
-pengunjung_per_bulan:28000
-},
-
-{
-id:7,
-nama:"Museum Negeri Jambi",
-kategori:"Sejarah",
-lat:-1.6107,
-lng:103.5930,
-deskripsi:"Museum yang menyimpan koleksi sejarah, budaya Melayu Jambi, dan peninggalan arkeologi daerah.",
-rating:4.4,
-pengunjung_per_bulan:7000
-},
-
-{
-id:8,
-nama:"Tanggo Rajo",
-kategori:"Budaya",
-lat:-1.5888,
-lng:103.6165,
-deskripsi:"Kawasan wisata tepian Sungai Batanghari yang ramai untuk rekreasi masyarakat dan pertunjukan budaya.",
-rating:4.5,
-pengunjung_per_bulan:17000
-},
-
-{
-id:9,
-nama:"Danau Teluk",
-kategori:"Alam",
-lat:-1.6404,
-lng:103.6138,
-deskripsi:"Danau alami yang terkenal sebagai habitat ikan air tawar dan lokasi wisata pemancingan.",
-rating:4.3,
+id:24,
+nama:"Mie Gacoan Mendalo",
+kategori:"Cafe",
+lat:-1.606865,
+lng:103.518668,
+deskripsi:"Restoran dan cafe populer yang ramai dikunjungi mahasiswa UNJA.",
+rating:4.8,
+harga:5000,
 pengunjung_per_bulan:5000
 },
-
 {
-id:10,
-nama:"Bukit Pangkah",
-kategori:"Alam",
-lat:-1.7360,
-lng:103.4460,
-deskripsi:"Perbukitan dengan panorama alam dan titik pandang yang menarik untuk fotografi.",
-rating:4.4,
-pengunjung_per_bulan:3500
-},
-
-{
-id:11,
-nama:"Kebun Binatang Taman Rimbo",
-kategori:"Alam",
-lat:-1.6207,
-lng:103.6031,
-deskripsi:"Koleksi satwa lokal dan nasional dalam kawasan wisata edukatif keluarga.",
-rating:4.2,
-pengunjung_per_bulan:8500
-},
-
-{
-id:12,
-nama:"Menara Gentala Arasy",
-kategori:"Budaya",
-lat:-1.5893,
-lng:103.6160,
-deskripsi:"Menara ikonik yang menampilkan sejarah perkembangan Islam dan budaya Melayu Jambi.",
-rating:4.6,
-pengunjung_per_bulan:14000
-},
-
-{
-id:13,
-nama:"Kampung Arab Melayu",
-kategori:"Budaya",
-lat:-1.5901,
-lng:103.6185,
-deskripsi:"Permukiman bersejarah yang mempertahankan budaya Melayu dan Arab di Kota Jambi.",
-rating:4.4,
-pengunjung_per_bulan:6000
-},
-
-{
-id:14,
-nama:"Taman Jaksa",
-kategori:"Budaya",
-lat:-1.6024,
-lng:103.6167,
-deskripsi:"Ruang terbuka publik yang menjadi pusat kegiatan masyarakat dan pertunjukan seni.",
-rating:4.1,
-pengunjung_per_bulan:4500
-},
-
-{
-id:15,
-nama:"Masjid Seribu Tiang",
-kategori:"Religi",
-lat:-1.4934,
-lng:103.6682,
-deskripsi:"Masjid terkenal di kawasan Muaro Jambi dengan arsitektur khas dan suasana religius.",
-rating:4.8,
-pengunjung_per_bulan:11000
-},
-
-{
-id:16,
-nama:"Danau Tangkas",
-kategori:"Alam",
-lat:-1.7605,
-lng:103.5308,
-deskripsi:"Danau alami dengan panorama hijau dan suasana yang tenang untuk wisata alam.",
-rating:4.3,
-pengunjung_per_bulan:3000
-},
-
-{
-id:17,
-nama:"Candi Kedaton",
-kategori:"Sejarah",
-lat:-1.4957,
-lng:103.6701,
-deskripsi:"Bagian dari kompleks Percandian Muaro Jambi yang menyimpan jejak peradaban kuno.",
-rating:4.7,
-pengunjung_per_bulan:6000
-},
-
-{
-id:18,
-nama:"Rumah Batu Olak Kemang",
-kategori:"Sejarah",
-lat:-1.6834,
-lng:103.6471,
-deskripsi:"Situs peninggalan sejarah yang berkaitan dengan kebudayaan Melayu Jambi.",
-rating:4.2,
+id:25,
+nama:"NH Nyaman Hati Cafe&Resto",
+kategori:"Cafe",
+lat:-1.613680,
+lng:103.528088,
+deskripsi:"Cafe dan resto dengan suasana nyaman untuk belajar dan berkumpul.",
+rating:4.5,
+harga:25000,
 pengunjung_per_bulan:2500
 },
-
+{
+id:26,
+nama:"Cafe Simpang Kopi Mendalo",
+kategori:"Cafe",
+lat:-1.609096,
+lng:103.522457,
+deskripsi:"Tempat ngopi favorit mahasiswa di kawasan Mendalo.",
+rating:4.8,
+harga:25000,
+pengunjung_per_bulan:3000
+},
+{
+id:27,
+nama:"Little Talk Jambi",
+kategori:"Cafe",
+lat:-1.622013,
+lng:103.631182,
+deskripsi:"Cafe modern dengan berbagai pilihan minuman dan makanan.",
+rating:4.4,
+harga:50000,
+pengunjung_per_bulan:1800
+},
+{
+id:28,
+nama:"Meet Up Cafe Mendalo",
+kategori:"Cafe",
+lat:-1.610701,
+lng:103.524679,
+deskripsi:"Tempat berkumpul dan diskusi mahasiswa dekat kampus.",
+rating:4.2,
+harga:10000,
+pengunjung_per_bulan:1700
+},
+{
+id:29,
+nama:"INNS.COFFEE Mendalo",
+kategori:"Cafe",
+lat:-1.608134,
+lng:103.522458,
+deskripsi:"Coffee shop dengan suasana nyaman dan akses WiFi.",
+rating:5.0,
+harga:5000,
+pengunjung_per_bulan:3200
+},
+{
+id:30,
+nama:"E=mc2 Mendalo Corner",
+kategori:"Cafe",
+lat:-1.612043,
+lng:103.526632,
+deskripsi:"Cafe mahasiswa dengan konsep santai dan harga terjangkau.",
+rating:4.5,
+harga:15000,
+pengunjung_per_bulan:2100
+},
+{
+id:31,
+nama:"Rumah Kayu Coffee",
+kategori:"Cafe",
+lat:-1.607981,
+lng:103.521570,
+deskripsi:"Cafe bernuansa kayu dengan area nongkrong yang nyaman.",
+rating:4.7,
+harga:30000,
+pengunjung_per_bulan:2600
+},
+{
+id:32,
+nama:"Wee Coffee & Eatery",
+kategori:"Cafe",
+lat:-1.619400,
+lng:103.4543373,
+deskripsi:"Coffee shop dan eatery dengan berbagai pilihan menu.",
+rating:4.6,
+harga:25000,
+pengunjung_per_bulan:2200
+},
+{
+id:1,
+nama:"Laundry Pink",
+kategori:"Laundry",
+lat:-1.613839,
+lng:103.522227,
+deskripsi:"Layanan laundry di kawasan Mendalo.",
+rating:4.8,
+harga:7000,
+pengunjung_per_bulan:500
+},
+{
+id:2,
+nama:"Kimnayaka Laundry Mendalo",
+kategori:"Laundry",
+lat:-1.605758,
+lng:103.522853,
+deskripsi:"Laundry kiloan untuk mahasiswa dan warga sekitar.",
+rating:4.7,
+harga:8000,
+pengunjung_per_bulan:450
+},
+{
+id:3,
+nama:"Mamska Laundry",
+kategori:"Laundry",
+lat:-1.606449,
+lng:103.522355,
+deskripsi:"Jasa laundry harian di kawasan Mendalo.",
+rating:4.7,
+harga:8000,
+pengunjung_per_bulan:400
+},
+{
+id:4,
+nama:"Kybot Laundry Express",
+kategori:"Laundry",
+lat:-1.608607,
+lng:103.516731,
+deskripsi:"Laundry express dengan layanan cepat.",
+rating:4.6,
+harga:10000,
+pengunjung_per_bulan:350
+},
+{
+id:5,
+nama:"REZY Laundry Express",
+kategori:"Laundry",
+lat:-1.610023,
+lng:103.522759,
+deskripsi:"Laundry express dekat area kos mahasiswa.",
+rating:4.6,
+harga:8000,
+pengunjung_per_bulan:420
+},
+{
+id:6,
+nama:"FreshOut Laundry",
+kategori:"Laundry",
+lat:-1.612925,
+lng:103.526935,
+deskripsi:"Laundry kiloan kawasan Mendalo Darat.",
+rating:4.5,
+harga:7000,
+pengunjung_per_bulan:300
+},
+{
+id:7,
+nama:"TomWash Laundry",
+kategori:"Laundry",
+lat:-1.617051,
+lng:103.529703,
+deskripsi:"Layanan laundry untuk mahasiswa dan umum.",
+rating:4.5,
+harga:7000,
+pengunjung_per_bulan:280
+},
+{
+id:8,
+nama:"Lily Laundry",
+kategori:"Laundry",
+lat:-1.616421,
+lng:103.529106,
+deskripsi:"Laundry harian dengan harga terjangkau.",
+rating:4.4,
+harga:7000,
+pengunjung_per_bulan:250
+},
+{
+id:9,
+nama:"Arsy Laundry",
+kategori:"Laundry",
+lat:-1.608731,
+lng:103.522441,
+deskripsi:"Laundry dekat kawasan kampus UNJA.",
+rating:4.3,
+harga:7000,
+pengunjung_per_bulan:260
+},
+{
+id:10,
+nama:"MAXXKLIN Laundry",
+kategori:"Laundry",
+lat:-1.606704,
+lng:103.518140,
+deskripsi:"Laundry kiloan dan satuan.",
+rating:4.4,
+harga:8000,
+pengunjung_per_bulan:240
+},
+{
+id:11,
+nama:"Masjid Jamiussalam UNJA",
+kategori:"Masjid",
+lat:-1.618335,
+lng:103.516027,
+deskripsi:"Masjid utama di kawasan Universitas Jambi.",
+rating:4.8,
+harga:0,
+pengunjung_per_bulan:5000
+},
+{
+id:12,
+nama:"Masjid Al-Ijtihad FKIP Universitas Jambi",
+kategori:"Masjid",
+lat:-1.615335,
+lng:103.518101,
+deskripsi:"Masjid lingkungan FKIP Universitas Jambi.",
+rating:4.4,
+harga:0,
+pengunjung_per_bulan:2500
+},
+{
+id:13,
+nama:"Masjid Nurul Islam FEB UNJA",
+kategori:"Masjid",
+lat:-1.613700,
+lng:103.524500,
+deskripsi:"Masjid yang berada di lingkungan FEB UNJA.",
+rating:4.6,
+harga:0,
+pengunjung_per_bulan:2200
+},
+{
+id:14,
+nama:"Masjid Jami' At Taqwa",
+kategori:"Masjid",
+lat:-1.609234,
+lng:103.522841,
+deskripsi:"Masjid masyarakat sekitar Mendalo.",
+rating:4.7,
+harga:0,
+pengunjung_per_bulan:1800
+},
+{
+id:15,
+nama:"Masjid Babussalam",
+kategori:"Masjid",
+lat:-1.606154,
+lng:103.522631,
+deskripsi:"Masjid lingkungan pemukiman Mendalo.",
+rating:4.6,
+harga:0,
+pengunjung_per_bulan:1700
+},
+{
+id:16,
+nama:"TOMORO COFFEE UNJA Mendalo",
+kategori:"Minuman",
+lat:-1.610129,
+lng:103.523123,
+deskripsi:"Gerai minuman dan kopi modern dekat kampus.",
+rating:4.8,
+harga:22000,
+pengunjung_per_bulan:3000
+},
+{
+id:17,
+nama:"WEDRINK Mendalo",
+kategori:"Minuman",
+lat:-1.607039,
+lng:103.519831,
+deskripsi:"Minuman kekinian dan boba di Mendalo.",
+rating:4.8,
+harga:15000,
+pengunjung_per_bulan:2500
+},
+{
+id:18,
+nama:"Xini Boba",
+kategori:"Minuman",
+lat:-1.609610,
+lng:103.523064,
+deskripsi:"Minuman boba favorit mahasiswa.",
+rating:4.7,
+harga:12000,
+pengunjung_per_bulan:2200
+},
 {
 id:19,
-nama:"Pematang Sulur Riverside",
-kategori:"Kuliner",
-lat:-1.6017,
-lng:103.6262,
-deskripsi:"Kawasan kuliner tepi sungai dengan berbagai makanan khas Jambi dan suasana malam yang menarik.",
-rating:4.5,
-pengunjung_per_bulan:12000
+nama:"Apotek Aufa Pharma",
+kategori:"Apotek",
+lat:-1.607902,
+lng:103.520703,
+deskripsi:"Apotek yang menyediakan obat dan kebutuhan kesehatan.",
+rating:4.7,
+harga:25000,
+pengunjung_per_bulan:700
 },
-
 {
 id:20,
-nama:"Tugu Keris Siginjai",
-kategori:"Budaya",
-lat:-1.6084,
-lng:103.6142,
-deskripsi:"Monumen simbol Provinsi Jambi yang menjadi titik foto favorit wisatawan.",
-rating:4.3,
-pengunjung_per_bulan:8000
-}
-
+nama:"Apotek Ratu Odmund",
+kategori:"Apotek",
+lat:-1.608831,
+lng:103.522067,
+deskripsi:"Apotek dengan berbagai produk kesehatan.",
+rating:4.6,
+harga:30000,
+pengunjung_per_bulan:650
+},
+{
+id:21,
+nama:"Apotek Dana Farma",
+kategori:"Apotek",
+lat:-1.609756,
+lng:103.522905,
+deskripsi:"Apotek kawasan Mendalo dengan stok obat lengkap.",
+rating:4.8,
+harga:28000,
+pengunjung_per_bulan:750
+},
+{
+id:22,
+nama:"Apotek KDA Mendalo",
+kategori:"Apotek",
+lat:-1.610655,
+lng:103.524020,
+deskripsi:"Apotek yang melayani resep dan obat bebas.",
+rating:4.5,
+harga:27000,
+pengunjung_per_bulan:600
+},
+{
+id:23,
+nama:"HI Farma Mendalo",
+kategori:"Apotek",
+lat:-1.606597,
+lng:103.518147,
+deskripsi:"Apotek dekat kawasan kampus dan kos mahasiswa.",
+rating:4.9,
+harga:30000,
+pengunjung_per_bulan:800
+  }
 ];
 
 /* ==========================================================
@@ -1123,80 +1346,6 @@ point,
    KNN SEARCH
 ========================== */
 
-nearestNeighbor(query,k=5){
-
-    const best = [];
-
-    const search = (node)=>{
-
-        if(!node) return;
-
-        const axis = node.axis;
-
-        const distance = haversine(
-            query.lat,
-            query.lng,
-            node.point.lat,
-            node.point.lng
-        );
-
-        best.push({
-            ...node.point,
-            distance
-        });
-
-        best.sort(
-            (a,b)=>a.distance-b.distance
-        );
-
-        if(best.length > k){
-            best.pop();
-        }
-
-        const queryValue =
-            axis===0
-            ? query.lat
-            : query.lng;
-
-        const nodeValue =
-            axis===0
-            ? node.point.lat
-            : node.point.lng;
-
-        const nearBranch =
-            queryValue < nodeValue
-            ? node.left
-            : node.right;
-
-        const farBranch =
-            queryValue < nodeValue
-            ? node.right
-            : node.left;
-
-        search(nearBranch);
-
-        const axisDistance =
-            Math.abs(queryValue-nodeValue)
-            *111;
-
-        const worstDistance =
-            best.length < k
-            ? Infinity
-            : best[best.length-1].distance;
-
-        if(axisDistance < worstDistance){
-
-            search(farBranch);
-
-        }
-
-    };
-
-    search(this.root);
-
-    return best;
-
-}
 
 /* ==========================
    RANGE SEARCH
@@ -1630,7 +1779,81 @@ function flyToLocation(
 /* ==========================
    HITUNG JARAK USER
 ========================== */
+function passesAdvancedFilter(item){
 
+    return (
+
+        item.harga <= currentMaxPrice
+
+        &&
+
+        item.rating >= currentMinRating
+
+    );
+
+}
+
+/* ==========================
+   FILTER UTAMA SISTEM
+========================== */
+
+function getFilteredLocations(
+    keyword = ""
+){
+
+    const radius = Number(
+        document.getElementById(
+            "radiusSlider"
+        ).value
+    );
+
+    if(!kdTree){
+        return [];
+    }
+
+    const results = kdTree.rangeSearch(
+
+        {
+            lat:userLocation.lat,
+            lng:userLocation.lng
+        },
+
+        radius
+
+    );
+
+    keyword =
+        keyword
+        .toLowerCase()
+        .trim();
+
+    return results.filter(item=>{
+
+        return (
+
+            isCategoryVisible(
+                item.kategori
+            )
+
+            &&
+
+            item.harga <= currentMaxPrice
+
+            &&
+
+            item.rating >= currentMinRating
+
+            &&
+
+            item.nama
+                .toLowerCase()
+                .includes(keyword)
+
+        );
+
+    });
+
+}
 function distanceFromUser(point){
 
     return haversine(
@@ -1868,16 +2091,8 @@ function createMarkerElement(data){
         getCategoryColor(
             data.kategori
         );
-
-    const size =
-        12 +
-        (data.rating * 4);
-
-    marker.style.width =
-        `${size}px`;
-
-    marker.style.height =
-        `${size}px`;
+  marker.style.width = "28px";
+  marker.style.height = "28px";
 
     marker.style.background =
         color;
@@ -1886,9 +2101,42 @@ function createMarkerElement(data){
         `0 0 12px ${color}`;
 
     marker.style.opacity =
-        "0";
+    "0";
 
-    return marker;
+/* TITIK PUTIH TENGAH */
+
+const centerDot =
+    document.createElement(
+        "div"
+    );
+
+centerDot.style.width =
+    "10px";
+
+centerDot.style.height =
+    "10px";
+
+centerDot.style.background =
+    "#ffffff";
+
+centerDot.style.borderRadius =
+    "50%";
+
+centerDot.style.position =
+    "absolute";
+
+centerDot.style.left = "50%";
+
+centerDot.style.top = "50%";
+
+centerDot.style.transform =
+    "translate(-50%,-50%) rotate(45deg)";
+
+marker.appendChild(
+    centerDot
+);
+
+return marker;
 
 }
 
@@ -1990,17 +2238,19 @@ function createWisataMarker(data,index=0){
             createPopupHTML(data)
         );
 
-    const marker =
-        new maplibregl.Marker({
+const marker =
+    new maplibregl.Marker({
 
-            element:el
+        element:el,
 
-        })
+        anchor:"bottom"
 
-        .setLngLat([
-            data.lng,
-            data.lat
-        ])
+    })
+
+    .setLngLat([
+        data.lng,
+        data.lat
+    ])
 
         .setPopup(
             popup
@@ -2063,109 +2313,69 @@ function loadWisataMarkers(){
    FILTER MARKER KATEGORI
 ========================== */
 
-function applyCategoryFilter(){
+function refreshAllFilters(){
+
+    const keyword =
+        document
+        .getElementById(
+            "searchInput"
+        )
+        .value;
+
+    const results =
+        getFilteredLocations(
+            keyword
+        );
+
+    const visibleIds =
+        new Set(
+            results.map(
+                item=>item.id
+            )
+        );
 
     wisataMarkers.forEach(item=>{
 
-        const visible =
-            isCategoryVisible(
-                item.data.kategori
-            );
-
         item.element.style.display =
-            visible
+
+            visibleIds.has(
+                item.data.id
+            )
+
             ? "block"
             : "none";
 
     });
 
-}
+    const radius =
+        Number(
+            document
+            .getElementById(
+                "radiusSlider"
+            )
+            .value
+        );
 
+    updateCounterText(
+        results.length,
+        radius
+    );
+
+    drawRadiusLines(
+        results
+    );
+
+}
 /* ==========================
    FILTER MARKER NAMA
 ========================== */
 
-function applySearchFilter(keyword){
-
-    wisataMarkers.forEach(item=>{
-
-        const visible =
-
-            item.data.nama
-            .toLowerCase()
-            .includes(
-                keyword.toLowerCase()
-            );
-
-        item.element.style.display =
-            visible
-            ? "block"
-            : "none";
-
-    });
-
-}
-
 /* ==========================
    RESET HIGHLIGHT MARKER
 ========================== */
-
-function resetMarkerHighlight(){
-
-    wisataMarkers.forEach(item=>{
-
-        item.element.style.opacity =
-            "1";
-
-        item.element.style.transform =
-            "scale(1)";
-
-    });
-
-}
-
 /* ==========================
    HIGHLIGHT HASIL KNN
 ========================== */
-
-function highlightNearestResults(results){
-
-    resetMarkerHighlight();
-
-    const opacityLevels =
-    [1,0.9,0.8,0.7,0.6];
-
-    results.forEach((item,index)=>{
-
-        const markerObj =
-            wisataMarkers.find(
-
-                m=>
-                m.data.id===item.id
-
-            );
-
-        if(!markerObj) return;
-
-        markerObj.element.style.opacity =
-            opacityLevels[index] ?? 1;
-
-        markerObj.element.style.transform =
-            index===0
-            ? "scale(1.8)"
-            : "scale(1.2)";
-
-        if(index===0){
-
-            markerObj.element.style.boxShadow =
-            `0 0 20px ${getCategoryColor(item.kategori)},
-             0 0 40px ${getCategoryColor(item.kategori)}`;
-
-        }
-
-    });
-
-}
 
 /* ==========================
    FLY TO MARKER
@@ -2195,35 +2405,6 @@ function focusMarker(id){
    KNN TERDEKAT
 ========================== */
 
-function findNearest(k=5){
-
-    if(!kdTree) return [];
-
-    const nearest =
-        kdTree.nearestNeighbor({
-
-            lat:userLocation.lat,
-            lng:userLocation.lng
-
-        },k)
-
-        .filter(item=>
-            isCategoryVisible(
-                item.kategori
-            )
-        );
-
-    highlightNearestResults(
-        nearest
-    );
-
-    renderKNNResults(
-        nearest
-    );
-
-    return nearest;
-
-}
 
 /* ==========================
    CARI DALAM RADIUS
@@ -2231,20 +2412,16 @@ function findNearest(k=5){
 
 function findInRadius(radiusKm){
 
-    if(!kdTree) return [];
+    const keyword =
+        document
+        .getElementById(
+            "searchInput"
+        )
+        .value;
 
     const results =
-        kdTree.rangeSearch({
-
-            lat:userLocation.lat,
-            lng:userLocation.lng
-
-        },radiusKm)
-
-        .filter(item=>
-            isCategoryVisible(
-                item.kategori
-            )
+        getFilteredLocations(
+            keyword
         );
 
     updateCounterText(
@@ -2256,10 +2433,13 @@ function findInRadius(radiusKm){
         results
     );
 
+    drawRadiusLines(
+        results
+    );
+
     return results;
 
 }
-
 /* ==========================
    UPDATE VISUAL RADIUS
 ========================== */
@@ -2275,29 +2455,15 @@ function updateRadiusMarkerState(results){
 
     wisataMarkers.forEach(item=>{
 
-        if(
+        const visible =
             insideIds.has(
                 item.data.id
-            )
-        ){
+            );
 
-            item.element.style.opacity =
-                "1";
-
-            item.element.style.animation =
-                "pulseMarker 2s infinite";
-
-        }
-
-        else{
-
-            item.element.style.opacity =
-                ".15";
-
-            item.element.style.animation =
-                "none";
-
-        }
+        item.element.style.display =
+            visible
+            ? "block"
+            : "none";
 
     });
 
@@ -2387,145 +2553,127 @@ function updateRadiusCircle(radiusKm){
    PANEL HASIL KNN
 ========================== */
 
-function renderKNNResults(results){
-
-    const container =
-        document.getElementById(
-            "resultsContainer"
-        );
-
-    container.innerHTML = "";
-
-    results.forEach((item,index)=>{
-
-        const div =
-            document.createElement(
-                "div"
-            );
-
-        div.className =
-            "result-item";
-      const panelOpacity = [
-    1,
-    0.9,
-    0.8,
-    0.7,
-    0.6
-];
-
-div.style.opacity =
-    panelOpacity[index] ?? 1;
-
-        const rank =
-            String(index+1)
-            .padStart(2,"0");
-
-        const badgeColor =
-            getCategoryColor(
-                item.kategori
-            );
-
-        div.innerHTML = `
-
-            <div
-            class="result-name">
-
-                ${rank}
-                ${item.nama}
-
-            </div>
-
-            <div
-            style="
-            margin-top:6px">
-
-                <span
-                style="
-                background:${badgeColor};
-                color:black;
-                padding:2px 8px;
-                border-radius:999px;
-                font-size:11px;
-                font-weight:700;
-                ">
-                    ${item.kategori}
-                </span>
-
-            </div>
-
-            <div
-            style="
-            margin-top:6px;
-            color:#FFD700;
-            ">
-
-                ${getStarRating(item.rating)}
-                ${item.rating}
-
-            </div>
-
-            <div
-            class="result-distance">
-
-                ${formatDistance(
-                    item.distance
-                )}
-
-            </div>
-
-            ${
-                index===0
-                ?
-                `<div style="
-                color:#00FFD1;
-                margin-top:6px;
-                font-size:11px;
-                font-weight:700;
-                ">
-                TERDEKAT
-                </div>`
-                :
-                ""
-            }
-
-        `;
- if(index===0){
-
-    div.style.border =
-        "1px solid #00FFD1";
-
-    div.style.boxShadow =
-        "0 0 15px rgba(0,255,209,.4)";
-
-}
-        div.onclick = ()=>{
-
-            focusMarker(
-                item.id
-            );
-
-        };
-
-        container.appendChild(
-            div
-        );
-
-        setTimeout(()=>{
-
-            div.classList.add(
-                "show"
-            );
-
-        },index*80);
-
-    });
-
-}
 
 /* ==========================
    CLEAR ROUTE
 ========================== */
+function clearRadiusLines(){
 
+    if(
+        map.getLayer(
+            "radius-connections"
+        )
+    ){
+
+        map.removeLayer(
+            "radius-connections"
+        );
+
+    }
+
+    if(
+        map.getSource(
+            "radius-connections"
+        )
+    ){
+
+        map.removeSource(
+            "radius-connections"
+        );
+
+    }
+
+}
+
+function drawRadiusLines(results){
+
+    clearRadiusLines();
+
+    const features = results.map(item=>({
+
+        type:"Feature",
+
+        geometry:{
+
+            type:"LineString",
+
+            coordinates:[
+
+                [
+                    userLocation.lng,
+                    userLocation.lat
+                ],
+
+                [
+                    item.lng,
+                    item.lat
+                ]
+
+            ]
+
+        },
+
+        properties:{
+
+            color:
+                getCategoryColor(
+                    item.kategori
+                )
+
+        }
+
+    }));
+
+    map.addSource(
+
+        "radius-connections",
+
+        {
+
+            type:"geojson",
+
+            data:{
+
+                type:"FeatureCollection",
+
+                features
+
+            }
+
+        }
+
+    );
+
+    map.addLayer({
+
+        id:"radius-connections",
+
+        type:"line",
+
+        source:"radius-connections",
+
+        paint:{
+
+            "line-color":[
+                "get",
+                "color"
+            ],
+
+            "line-width":2,
+
+            "line-dasharray":[
+                2,
+                2
+            ],
+
+            "line-opacity":0.8
+
+        }
+
+    });
+
+}
+  
 function clearRoute(){
 
     if(
@@ -2625,6 +2773,7 @@ async function showRoute(id){
 
         const response =
             await fetch(
+              
 
                 "https://api.openrouteservice.org/v2/directions/driving-car",
 
@@ -2911,20 +3060,39 @@ function showRouteInfo(route){
 
 function setupEventListeners(){
 
-    /* ======================
-       TOMBOL KNN
-    ====================== */
+document
+.getElementById(
+    "toggleSidebar"
+)
+.addEventListener(
+    "click",
+    ()=>{
 
-    document
-    .getElementById("btnNearest")
-    .addEventListener(
-        "click",
-        ()=>{
+        const sidebar =
+            document.getElementById(
+                "sidebar"
+            );
 
-            findNearest(5);
+        sidebar.classList.toggle(
+            "hidden"
+        );
 
-        }
-    );
+        const btn =
+            document.getElementById(
+                "toggleSidebar"
+            );
+
+        btn.textContent =
+
+            sidebar.classList.contains(
+                "hidden"
+            )
+
+            ? "☞"
+            : "☜";
+
+    }
+);
 
     /* ======================
        SLIDER RADIUS
@@ -2950,13 +3118,11 @@ function setupEventListeners(){
         .textContent =
         `Radius: ${radius} km`;
 
-        updateRadiusCircle(
-            radius
-        );
+updateRadiusCircle(
+    radius
+);
 
-        findInRadius(
-            radius
-        );
+refreshAllFilters();
 
     },150);
 
@@ -2975,27 +3141,14 @@ function setupEventListeners(){
     )
     .forEach(box=>{
 
-        box.addEventListener(
-            "change",
-            ()=>{
+box.addEventListener(
+    "change",
+    ()=>{
 
-                applyCategoryFilter();
+        refreshAllFilters();
 
-                const radius =
-                    Number(
-                        document
-                        .getElementById(
-                            "radiusSlider"
-                        )
-                        .value
-                    );
-
-                findInRadius(
-                    radius
-                );
-
-            }
-        );
+    }
+);
 
     });
 
@@ -3003,21 +3156,128 @@ function setupEventListeners(){
        SEARCH REALTIME
     ====================== */
 
-    document
-    .getElementById(
-        "searchInput"
-    )
-    .addEventListener(
-        "input",
-        e=>{
+document
+.getElementById(
+    "searchInput"
+)
+.addEventListener(
+    "input",
+    ()=>{
 
-            applySearchFilter(
+        refreshAllFilters();
+
+    }
+);
+  const priceSlider =
+document.getElementById(
+    "priceSlider"
+);
+
+const priceInput =
+document.getElementById(
+    "priceInput"
+);
+
+priceSlider.addEventListener(
+    "input",
+    ()=>{
+
+        currentMaxPrice =
+            Number(
+                priceSlider.value
+            );
+
+        priceInput.value =
+            currentMaxPrice;
+
+        document
+        .getElementById(
+            "priceLabel"
+        )
+        .textContent =
+        "Maksimum: Rp " +
+        currentMaxPrice.toLocaleString(
+            "id-ID"
+        );
+
+        const radius =
+            Number(
+                document
+                .getElementById(
+                    "radiusSlider"
+                )
+                .value
+            );
+
+        refreshAllFilters();
+
+    }
+);
+
+priceInput.addEventListener(
+    "input",
+    ()=>{
+
+        currentMaxPrice =
+            Number(
+                priceInput.value
+            ) || 0;
+
+
+        priceSlider.value =
+            currentMaxPrice;
+
+        document
+        .getElementById(
+            "priceLabel"
+        )
+        .textContent =
+        "Maksimum: Rp " +
+        currentMaxPrice.toLocaleString(
+            "id-ID"
+        );
+
+        const radius =
+            Number(
+                document
+                .getElementById(
+                    "radiusSlider"
+                )
+                .value
+            );
+
+        refreshAllFilters();
+
+    }
+);
+
+document
+.getElementById(
+    "ratingSlider"
+)
+.addEventListener(
+    "input",
+    e=>{
+
+        currentMinRating =
+            Number(
                 e.target.value
             );
 
-        }
-    );
 
+        document
+        .getElementById(
+            "ratingLabel"
+        )
+        .textContent =
+        "Rating: " +
+        currentMinRating +
+        "+";
+
+        refreshAllFilters();
+
+    }
+);
 }
 
 /* ==========================
@@ -3307,4 +3567,4 @@ document.addEventListener(
 </script>
 
 </body>
-</html>
+   </html>
