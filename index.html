@@ -166,10 +166,26 @@ body{
 }
 
 .panel-title{
+
     font-family:'Syne Mono', monospace;
+
     color:var(--aksen-cyan);
+
     font-size:18px;
-    margin-bottom:10px;
+
+    margin-bottom:14px;
+
+    text-align:center;
+
+    width:100%;
+
+    letter-spacing:2px;
+
+    padding-bottom:10px;
+
+    border-bottom:
+        1px solid rgba(0,255,209,.15);
+
 }
 
 .coord-box{
@@ -392,12 +408,12 @@ body{
 
 .marker-lokasi{
 
-    width:28px !important;
-    height:28px !important;
+    width:32px !important;
+    height:32px !important;
 
-    border-radius:50% 50% 50% 0;
+    border-radius:50%;
 
-    transform:rotate(-45deg);
+    transform:none;
 
     cursor:pointer;
 
@@ -410,13 +426,10 @@ body{
     box-shadow:
         0 2px 8px rgba(0,0,0,.35);
 
-}
-
+  }
 .marker-lokasi:hover{
 
-    transform:
-        rotate(-45deg)
-        scale(1.2);
+    transform:scale(1.15);
 
 }
 
@@ -582,8 +595,50 @@ body{
     transform:scale(1.05);
 
 }
+  /* ==========================================
+   POPUP DARK THEME
+========================================== */
 
-</style>
+.maplibregl-popup-content{
+
+    background:#081522 !important;
+
+    color:#E2EAF0 !important;
+
+    border-radius:16px;
+
+    border:1px solid rgba(0,255,209,.2);
+
+}
+
+.maplibregl-popup-close-button{
+
+    color:white !important;
+
+}
+
+.popup-title{
+
+    color:white !important;
+
+    font-weight:700;
+
+    font-size:16px;
+
+}
+
+.popup-desc{
+
+    color:#C8D6E5 !important;
+
+}
+
+.maplibregl-popup-content div{
+
+    color:#E2EAF0 !important;
+
+}
+
 </style>
 </head>
 
@@ -1584,7 +1639,7 @@ function isCategoryVisible(kategori){
 }
 
 /* ==========================
-   FILTER NAMA
+   FILTER NAMAeg
 ========================== */
 
 function filterByName(keyword){
@@ -2243,7 +2298,7 @@ const marker =
 
         element:el,
 
-        anchor:"bottom"
+        anchor:"center"
 
     })
 
@@ -3567,4 +3622,4 @@ document.addEventListener(
 </script>
 
 </body>
-   </html>
+</html>
