@@ -2562,6 +2562,3230 @@ function clearRoute(){
     );
 
 }
+function decodePolyline(encoded){
+
+    let points = [];
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+
+    while(index < encoded.length){
+
+        let b;
+        let shift = 0;
+        let result = 0;
+
+        do{
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        }while(b >= 0x20);
+
+        const dlat =
+            result & 1
+            ? ~(result >> 1)
+            : result >> 1;
+
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+
+        do{
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        }while(b >= 0x20);
+
+        const dlng =
+            result & 1
+            ? ~(result >> 1)
+            : result >> 1;
+
+        lng += dlng;
+
+        points.push([
+            lng / 100000,
+            lat / 100000
+        ]);
+
+    }
+
+    return points;
+
+}
+/* ==========================
+   ROUTE ORS
+========================== */
+
+async function showRoute(id){
+
+    const destination =
+        WISATA_DATA.find(
+            x=>x.id===id
+        );
+
+    if(!destination) return;
+
+    clearRoute();
+
+    try{
+
+        const response =
+            await fetch(
+
+                "https://api.openrouteservice.org/v2/directions/driving-car",
+
+                {
+
+                    method:"POST",
+
+                    headers:{
+
+                        "Authorization":
+                        CONFIG.ORS_API_KEY,
+
+                        "Content-Type":
+                        "application/json"
+
+                    },
+
+                    body:JSON.stringify({
+
+                        coordinates:[
+
+                            [
+                                userLocation.lng,
+                                userLocation.lat
+                            ],
+
+                            [
+                                destination.lng,
+                                destination.lat
+                            ]
+
+                        ]
+
+                    })
+
+                }
+
+            );
+
+const data =
+    await response.json();
+
+const coords =
+    decodePolyline(
+        data.routes[0].geometry
+    );
+
+animateRoute(
+    coords,
+    data.routes[0]
+);
+
+    }
+
+    catch(error){
+
+        console.error(
+            error
+        );
+
+        alert(
+            "Gagal mengambil rute ORS"
+        );
+
+    }
+
+}
+
+/* ==========================
+   ANIMASI POLYLINE
+========================== */
+
+function animateRoute(
+    coordinates,
+    routeData
+){
+
+    const animated = [];
+
+    map.addSource(
+        "route-source",
+        {
+
+            type:"geojson",
+
+            data:{
+
+                type:"Feature",
+
+                geometry:{
+
+                    type:"LineString",
+
+                    coordinates:[]
+
+                }
+
+            }
+
+        }
+    );
+
+    map.addLayer({
+
+        id:"route-line",
+
+        type:"line",
+
+        source:"route-source",
+
+        paint:{
+
+            "line-color":"#00FFD1",
+
+            "line-width":4,
+
+            "line-opacity":1
+
+        }
+
+    });
+
+    const total =
+        coordinates.length;
+
+    const start =
+        performance.now();
+
+    function frame(now){
+
+        const progress =
+            Math.min(
+                (now-start)/1500,
+                1
+            );
+
+        const count =
+            Math.floor(
+                progress * total
+            );
+
+        animated.length = 0;
+
+        for(
+            let i=0;
+            i<count;
+            i++
+        ){
+
+            animated.push(
+                coordinates[i]
+            );
+
+        }
+
+        map.getSource(
+            "route-source"
+        ).setData({
+
+            type:"Feature",
+
+            geometry:{
+
+                type:"LineString",
+
+                coordinates:animated
+
+            }
+
+        });
+
+        if(progress < 1){
+
+            requestAnimationFrame(
+                frame
+            );
+
+        }
+
+        else{
+
+            showRouteInfo(
+                routeData
+            );
+
+        }
+
+    }
+
+    requestAnimationFrame(
+        frame
+    );
+
+}
+
+/* ==========================
+   INFO ROUTE
+========================== */
+
+function showRouteInfo(route){
+
+    const distanceKm =
+        route.summary.distance
+        /1000;
+
+    const durationMin =
+        route.summary.duration
+        /60;
+
+    const panel =
+        document.getElementById(
+            "routeInfo"
+        );
+
+    panel.innerHTML = `
+
+        <div>
+
+            <b>Jarak:</b>
+            ${distanceKm.toFixed(1)} km
+
+        </div>
+
+        <div
+        style="margin-top:6px">
+
+            <b>Estimasi:</b>
+            ${durationMin.toFixed(0)} menit
+
+        </div>
+
+        <button
+        onclick="clearRoute()"
+        style="
+        margin-top:10px;
+        width:100%;
+        border:none;
+        border-radius:8px;
+        padding:8px;
+        cursor:pointer;
+        background:#ff4b4b;
+        color:white;
+        ">
+
+            Hapus Rute
+
+        </button>
+
+    `;
+
+    panel.classList.add(
+        "show"
+    );
+
+}
+
+/* ==========================================================
+   [8] UI ENGINE
+========================================================== */
+/* ==========================
+   EVENT LISTENER
+========================== */
+
+function setupEventListeners(){
+
+    /* ======================
+       TOMBOL KNN
+    ====================== */
+
+    document
+    .getElementById("btnNearest")
+    .addEventListener(
+        "click",
+        ()=>{
+
+            findNearest(5);
+
+        }
+    );
+
+    /* ======================
+       SLIDER RADIUS
+    ====================== */
+
+    const slider =
+        document.getElementById(
+            "radiusSlider"
+        );
+
+    const radiusHandler =
+    debounce(()=>{
+
+        const radius =
+            Number(
+                slider.value
+            );
+
+        document
+        .getElementById(
+            "radiusLabel"
+        )
+        .textContent =
+        `Radius: ${radius} km`;
+
+        updateRadiusCircle(
+            radius
+        );
+
+        findInRadius(
+            radius
+        );
+
+    },150);
+
+    slider.addEventListener(
+        "input",
+        radiusHandler
+    );
+
+    /* ======================
+       FILTER KATEGORI
+    ====================== */
+
+    document
+    .querySelectorAll(
+        '.category-grid input[type="checkbox"]'
+    )
+    .forEach(box=>{
+
+        box.addEventListener(
+            "change",
+            ()=>{
+
+                applyCategoryFilter();
+
+                const radius =
+                    Number(
+                        document
+                        .getElementById(
+                            "radiusSlider"
+                        )
+                        .value
+                    );
+
+                findInRadius(
+                    radius
+                );
+
+            }
+        );
+
+    });
+
+    /* ======================
+       SEARCH REALTIME
+    ====================== */
+
+    document
+    .getElementById(
+        "searchInput"
+    )
+    .addEventListener(
+        "input",
+        e=>{
+
+            applySearchFilter(
+                e.target.value
+            );
+
+        }
+    );
+
+}
+
+/* ==========================
+   JAM DIGITAL
+========================== */
+
+function startClock(){
+
+    function tick(){
+
+        const now =
+            new Date();
+
+        const hh =
+            String(
+                now.getHours()
+            )
+            .padStart(2,"0");
+
+        const mm =
+            String(
+                now.getMinutes()
+            )
+            .padStart(2,"0");
+
+        const ss =
+            String(
+                now.getSeconds()
+            )
+            .padStart(2,"0");
+
+        document
+        .getElementById(
+            "clock"
+        )
+        .textContent =
+
+            `${hh}:${mm}:${ss}`;
+
+    }
+
+    tick();
+
+    setInterval(
+        tick,
+        1000
+    );
+
+}
+
+/* ==========================
+   PANEL MASUK
+========================== */
+
+function animatePanels(){
+
+    setTimeout(()=>{
+
+        document
+        .getElementById(
+            "sidebar"
+        )
+        .classList.add(
+            "loaded"
+        );
+
+    },100);
+
+    setTimeout(()=>{
+
+        document
+        .getElementById(
+            "header"
+        )
+        .classList.add(
+            "loaded"
+        );
+
+    },300);
+
+}
+
+/* ==========================================================
+   [9] ANIMASI & MICROINTERACTION
+========================================================== */
+
+/* ==========================
+   TYPEWRITER
+========================== */
+
+function playLoadingAnimation(){
+
+    const text =
+        "MENGINISIALISASI SISTEM SPASIAL...";
+
+    const target =
+        document.getElementById(
+            "loadingText"
+        );
+
+    let index = 0;
+
+    const timer =
+        setInterval(()=>{
+
+            target.textContent +=
+                text[index];
+
+            index++;
+
+            if(
+                index >= text.length
+            ){
+
+                clearInterval(
+                    timer
+                );
+
+            }
+
+        },50);
+
+    setTimeout(()=>{
+
+        document
+        .getElementById(
+            "loadingScreen"
+        )
+        .classList.add(
+            "hide"
+        );
+
+    },2000);
+
+}
+
+/* ==========================
+   EFEK HOVER MARKER
+========================== */
+
+function enableMarkerEffects(){
+
+    wisataMarkers.forEach(item=>{
+
+        item.element.addEventListener(
+            "mouseenter",
+            ()=>{
+
+                item.element.style.zIndex =
+                    999;
+
+            }
+        );
+
+        item.element.addEventListener(
+            "mouseleave",
+            ()=>{
+
+                item.element.style.zIndex =
+                    1;
+
+            }
+        );
+
+    });
+
+}
+
+/* ==========================================================
+   [10] INIT
+========================================================== */
+
+async function initializeSystem(){
+
+    /* ======================
+       LOADING
+    ====================== */
+
+    playLoadingAnimation();
+
+    /* ======================
+       MAP
+    ====================== */
+
+    initializeMap();
+
+    /* ======================
+       USER LOCATION
+    ====================== */
+
+userLocation =
+    await getUserLocation();
+
+updateCoordinatePanel();
+    /* ======================
+       TUNGGU MAP LOAD
+    ====================== */
+
+const startFeatures = ()=>{
+
+    createUserMarker();
+
+    kdTree =
+        new KDTree(
+            WISATA_DATA
+        );
+
+    loadWisataMarkers();
+
+    enableMarkerEffects();
+
+    animatePanels();
+
+    map.flyTo({
+
+        center:[
+            userLocation.lng,
+            userLocation.lat
+        ],
+
+        zoom:13,
+
+        speed:1.2,
+
+        curve:1.4
+
+    });
+
+    const defaultRadius =
+        Number(
+            document
+            .getElementById(
+                "radiusSlider"
+            )
+            .value
+        );
+
+    updateRadiusCircle(
+        defaultRadius
+    );
+
+    findInRadius(
+        defaultRadius
+    );
+
+};
+
+if(map.loaded()){
+
+    startFeatures();
+
+}else{
+
+    map.once(
+        "load",
+        startFeatures
+    );
+
+}
+
+    /* ======================
+       UI
+    ====================== */
+
+    setupEventListeners();
+
+    startClock();
+
+}
+
+/* ==========================
+   START APP
+========================== */
+
+document.addEventListener(
+
+    "DOMContentLoaded",
+
+    ()=>{
+
+        initializeSystem();
+
+    }
+
+);
+
+</script>
+
+</body>
+</html>    z-index:1;
+}
+
+/* ==========================================================
+   HEADER
+========================================================== */
+
+.header{
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+
+    height:48px;
+
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+
+    padding:0 20px;
+
+    backdrop-filter:blur(14px);
+
+    background:rgba(0,0,0,.35);
+
+    border-bottom:1px solid var(--border);
+
+    z-index:1000;
+
+    transform:translateY(-100%);
+}
+
+.header.loaded{
+    transform:translateY(0);
+    transition:.35s ease;
+}
+
+.header-left{
+    display:flex;
+    gap:16px;
+    align-items:center;
+}
+
+.logo{
+    font-family:'Syne Mono', monospace;
+    color:var(--aksen-cyan);
+    letter-spacing:1px;
+}
+
+.status{
+    color:#00FF88;
+    font-size:13px;
+}
+
+.clock{
+    font-weight:600;
+}
+
+/* ==========================================================
+   SIDEBAR
+========================================================== */
+
+.sidebar{
+
+    position:fixed;
+
+    top:60px;
+    left:15px;
+
+    width:300px;
+
+    z-index:999;
+
+    background:var(--panel-bg);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid var(--border);
+
+    border-radius:18px;
+
+    padding:16px;
+
+    transform:translateX(-120%);
+}
+
+.sidebar.loaded{
+    transform:translateX(0);
+    transition:.4s ease-out;
+}
+
+.panel-title{
+    font-family:'Syne Mono', monospace;
+    color:var(--aksen-cyan);
+    font-size:18px;
+    margin-bottom:10px;
+}
+
+.coord-box{
+    margin-bottom:16px;
+    color:#8BD8FF;
+    font-size:13px;
+}
+
+.section{
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px solid rgba(255,255,255,.08);
+}
+
+.section-label{
+    font-size:12px;
+    color:var(--teks-redup);
+    margin-bottom:10px;
+    letter-spacing:1px;
+}
+
+.search-input{
+    width:100%;
+
+    background:rgba(255,255,255,.05);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:white;
+
+    border-radius:10px;
+
+    padding:12px;
+}
+
+.search-input:focus{
+    outline:none;
+    border-color:var(--aksen-cyan);
+}
+
+.radius-value{
+    margin-top:10px;
+    font-size:14px;
+    color:var(--aksen-cyan);
+}
+
+.radius-counter{
+    margin-top:8px;
+    font-size:12px;
+    color:#8FA6BF;
+}
+
+.radius-slider{
+    width:100%;
+    margin-top:8px;
+}
+
+.btn-primary{
+
+    width:100%;
+
+    margin-top:10px;
+
+    border:none;
+
+    cursor:pointer;
+
+    background:linear-gradient(
+        135deg,
+        var(--aksen-cyan),
+        #00BFFF
+    );
+
+    color:black;
+
+    font-weight:700;
+
+    border-radius:12px;
+
+    padding:14px;
+}
+
+.btn-primary:hover{
+    transform:translateY(-2px);
+}
+
+.category-grid{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:8px;
+
+    margin-top:10px;
+}
+
+.category-item{
+    font-size:13px;
+}
+
+/* ==========================================================
+   RESULT PANEL
+========================================================== */
+
+.results-panel{
+
+    position:fixed;
+
+    left:15px;
+
+    bottom:15px;
+
+    width:300px;
+
+    max-height:380px;
+
+    overflow:auto;
+
+    z-index:999;
+
+    background:var(--panel-bg);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid var(--border);
+
+    border-radius:18px;
+
+    padding:14px;
+}
+
+.results-title{
+    color:var(--aksen-cyan);
+    font-family:'Syne Mono', monospace;
+    margin-bottom:12px;
+}
+
+.result-item{
+
+    opacity:0;
+
+    transform:translateX(-20px);
+
+    padding:10px;
+
+    margin-bottom:8px;
+
+    border-radius:12px;
+
+    background:rgba(255,255,255,.04);
+
+    cursor:pointer;
+}
+
+.result-item.show{
+    transform:translateX(0);
+    transition:.4s ease;
+}
+
+.result-name{
+    font-weight:600;
+}
+
+.result-distance{
+    color:#A0C4DE;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.badge{
+
+    display:inline-block;
+
+    padding:3px 8px;
+
+    border-radius:999px;
+
+    font-size:11px;
+
+    margin-top:6px;
+}
+
+/* ==========================================================
+   MARKER USER
+========================================================== */
+
+.marker-user{
+
+    width:16px;
+    height:16px;
+
+    border-radius:50%;
+
+    background:#0066FF;
+
+    border:2px solid white;
+
+    animation:pulseUser 1.5s infinite;
+}
+
+@keyframes pulseUser{
+
+    0%{
+        box-shadow:0 0 0 0 rgba(0,102,255,.8);
+    }
+
+    70%{
+        box-shadow:0 0 0 20px rgba(0,102,255,0);
+    }
+
+    100%{
+        box-shadow:0 0 0 0 rgba(0,102,255,0);
+    }
+}
+
+/* ==========================================================
+   MARKER WISATA
+========================================================== */
+
+.marker-lokasi{
+
+    border-radius:50%;
+
+    cursor:pointer;
+
+    transition:.25s;
+
+    animation:pulseMarker 2s infinite;
+}
+
+.marker-lokasi:hover{
+    transform:scale(1.5);
+}
+
+@keyframes pulseMarker{
+
+    0%,100%{
+        opacity:1;
+    }
+
+    50%{
+        opacity:.75;
+    }
+}
+
+/* ==========================================================
+   POPUP
+========================================================== */
+
+.popup-content{
+    min-width:220px;
+}
+
+.popup-title{
+    font-weight:700;
+    margin-bottom:8px;
+}
+
+.popup-desc{
+    font-size:13px;
+    line-height:1.5;
+    margin-top:8px;
+}
+
+.route-btn{
+
+    margin-top:12px;
+
+    width:100%;
+
+    border:none;
+
+    padding:10px;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    background:#ff4b4b;
+
+    color:white;
+
+    font-weight:700;
+}
+
+/* ==========================================================
+   ROUTE INFO
+========================================================== */
+
+.route-info{
+
+    position:fixed;
+
+    right:20px;
+
+    bottom:20px;
+
+    z-index:1000;
+
+    background:var(--panel-bg);
+
+    border:1px solid var(--border);
+
+    border-radius:14px;
+
+    padding:14px 16px;
+
+    display:none;
+}
+
+.route-info.show{
+    display:block;
+}
+
+/* ==========================================================
+   LOADING OVERLAY
+========================================================== */
+
+.loading-screen{
+
+    position:fixed;
+    inset:0;
+
+    background:black;
+
+    display:flex;
+
+    justify-content:center;
+    align-items:center;
+
+    z-index:99999;
+
+    flex-direction:column;
+}
+
+.loading-text{
+
+    color:var(--aksen-cyan);
+
+    font-family:'Syne Mono', monospace;
+
+    font-size:20px;
+
+    letter-spacing:2px;
+}
+
+.loading-screen.hide{
+    opacity:0;
+    pointer-events:none;
+    transition:.8s ease;
+}
+
+/* ==========================================================
+   SCROLLBAR
+========================================================== */
+
+::-webkit-scrollbar{
+    width:6px;
+}
+
+::-webkit-scrollbar-thumb{
+    background:var(--aksen-cyan);
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- =======================================================
+     LOADING SCREEN
+======================================================= -->
+
+<div id="loadingScreen" class="loading-screen">
+
+    <div id="loadingText"
+         class="loading-text">
+    </div>
+
+</div>
+
+<!-- =======================================================
+     HEADER
+======================================================= -->
+
+<div class="header" id="header">
+
+    <div class="header-left">
+
+        <div class="logo">
+            JAMBI SPATIAL INTEL
+        </div>
+
+        <div class="status">
+            ● SISTEM AKTIF
+        </div>
+
+    </div>
+
+    <div class="clock" id="clock">
+        00:00:00
+    </div>
+
+</div>
+
+<!-- =======================================================
+     SIDEBAR
+======================================================= -->
+
+<div class="sidebar" id="sidebar">
+
+    <div class="panel-title">
+        JAMBI SPATIAL INTEL
+    </div>
+
+    <div class="coord-box" id="liveCoord">
+        ● -1.6101° / 103.6131°
+    </div>
+
+    <div class="section">
+
+        <input
+            id="searchInput"
+            class="search-input"
+            placeholder="🔍 Cari lokasi..."
+        >
+
+    </div>
+
+    <div class="section">
+
+        <div class="section-label">
+            RADIUS PENCARIAN
+        </div>
+
+        <input
+            type="range"
+            min="1"
+            max="50"
+            value="15"
+            id="radiusSlider"
+            class="radius-slider"
+        >
+
+        <div
+            class="radius-value"
+            id="radiusLabel">
+            Radius: 15 km
+        </div>
+
+        <div
+            class="radius-counter"
+            id="radiusCounter">
+            0 lokasi ditemukan
+        </div>
+
+    </div>
+
+    <div class="section">
+
+        <button
+            id="btnNearest"
+            class="btn-primary">
+
+            TEMUKAN 5 TERDEKAT
+
+        </button>
+
+    </div>
+
+    <div class="section">
+
+        <div class="section-label">
+            FILTER KATEGORI
+        </div>
+
+        <div class="category-grid">
+
+            <label class="category-item">
+                <input checked type="checkbox" value="Alam">
+                Alam
+            </label>
+
+            <label class="category-item">
+                <input checked type="checkbox" value="Budaya">
+                Budaya
+            </label>
+
+            <label class="category-item">
+                <input checked type="checkbox" value="Kuliner">
+                Kuliner
+            </label>
+
+            <label class="category-item">
+                <input checked type="checkbox" value="Sejarah">
+                Sejarah
+            </label>
+
+            <label class="category-item">
+                <input checked type="checkbox" value="Religi">
+                Religi
+            </label>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- =======================================================
+     PANEL HASIL KNN
+======================================================= -->
+
+<div
+    class="results-panel"
+    id="resultsPanel">
+
+    <div class="results-title">
+        5 LOKASI TERDEKAT
+    </div>
+
+    <div id="resultsContainer"></div>
+
+</div>
+
+<!-- =======================================================
+     ROUTE INFO
+======================================================= -->
+
+<div
+    id="routeInfo"
+    class="route-info">
+
+    Belum ada rute aktif
+
+</div>
+
+<!-- =======================================================
+     MAP
+======================================================= -->
+
+<div id="map"></div>
+
+<script>
+
+/* ==========================================================
+   [1] KONFIGURASI & KONSTANTA
+========================================================== */
+
+const CONFIG = {
+
+    DEFAULT_CENTER:[103.6131,-1.6101],
+
+    DEFAULT_ZOOM:12,
+
+    DEFAULT_PITCH:45,
+
+    DEFAULT_BEARING:0,
+
+    ORS_API_KEY:"eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjUzOTQ4ZmIyZmFkZDQ4NjE4ODdkNjdhYzAxMzY2YmZmIiwiaCI6Im11cm11cjY0In0="
+
+};
+
+const CATEGORY_COLORS = {
+
+    Alam:"#00FF88",
+    Budaya:"#FFD700",
+    Kuliner:"#FF6B35",
+    Sejarah:"#C084FC",
+    Religi:"#38BDF8"
+
+};
+
+let map;
+
+let kdTree;
+
+let userLocation = {
+    lat:-1.6101,
+    lng:103.6131
+};
+
+let userMarker = null;
+
+let wisataMarkers = [];
+
+let currentRoute = null;
+
+let radiusCircleSource = null;
+
+let radiusCircleLayer = null;
+
+/* ==========================================================
+   BAGIAN 2 AKAN DIMULAI DI SINI
+========================================================== */
+/* ==========================================================
+   [2] DATA WISATA JAMBI
+========================================================== */
+
+const WISATA_DATA = [
+
+{
+id:1,
+nama:"Candi Muaro Jambi",
+kategori:"Sejarah",
+lat:-1.4928,
+lng:103.6674,
+deskripsi:"Kompleks percandian Hindu-Buddha terbesar di Asia Tenggara. Menjadi pusat peradaban Melayu kuno dan tujuan wisata sejarah utama Provinsi Jambi.",
+rating:4.9,
+pengunjung_per_bulan:25000
+},
+
+{
+id:2,
+nama:"Danau Sipin",
+kategori:"Alam",
+lat:-1.6108,
+lng:103.6240,
+deskripsi:"Danau alami yang berada di tengah Kota Jambi. Dikenal dengan wisata perahu tradisional dan panorama matahari terbenam.",
+rating:4.5,
+pengunjung_per_bulan:18000
+},
+
+{
+id:3,
+nama:"Taman Rimba Jambi",
+kategori:"Alam",
+lat:-1.6203,
+lng:103.6027,
+deskripsi:"Kawasan konservasi satwa dan ruang hijau kota yang cocok untuk edukasi keluarga.",
+rating:4.2,
+pengunjung_per_bulan:9000
+},
+
+{
+id:4,
+nama:"Pasar Angso Duo",
+kategori:"Kuliner",
+lat:-1.5964,
+lng:103.6150,
+deskripsi:"Pusat perdagangan terbesar di Jambi dengan beragam kuliner khas daerah dan hasil bumi lokal.",
+rating:4.3,
+pengunjung_per_bulan:40000
+},
+
+{
+id:5,
+nama:"Masjid Agung Al-Falah",
+kategori:"Religi",
+lat:-1.5988,
+lng:103.6134,
+deskripsi:"Masjid ikonik Kota Jambi yang terkenal dengan arsitektur tanpa kubah dan aktivitas keagamaan yang aktif.",
+rating:4.9,
+pengunjung_per_bulan:22000
+},
+
+{
+id:6,
+nama:"Jembatan Gentala Arasy",
+kategori:"Budaya",
+lat:-1.5898,
+lng:103.6156,
+deskripsi:"Landmark wisata tepi Sungai Batanghari yang menghubungkan kawasan budaya dan ruang publik kota.",
+rating:4.7,
+pengunjung_per_bulan:28000
+},
+
+{
+id:7,
+nama:"Museum Negeri Jambi",
+kategori:"Sejarah",
+lat:-1.6107,
+lng:103.5930,
+deskripsi:"Museum yang menyimpan koleksi sejarah, budaya Melayu Jambi, dan peninggalan arkeologi daerah.",
+rating:4.4,
+pengunjung_per_bulan:7000
+},
+
+{
+id:8,
+nama:"Tanggo Rajo",
+kategori:"Budaya",
+lat:-1.5888,
+lng:103.6165,
+deskripsi:"Kawasan wisata tepian Sungai Batanghari yang ramai untuk rekreasi masyarakat dan pertunjukan budaya.",
+rating:4.5,
+pengunjung_per_bulan:17000
+},
+
+{
+id:9,
+nama:"Danau Teluk",
+kategori:"Alam",
+lat:-1.6404,
+lng:103.6138,
+deskripsi:"Danau alami yang terkenal sebagai habitat ikan air tawar dan lokasi wisata pemancingan.",
+rating:4.3,
+pengunjung_per_bulan:5000
+},
+
+{
+id:10,
+nama:"Bukit Pangkah",
+kategori:"Alam",
+lat:-1.7360,
+lng:103.4460,
+deskripsi:"Perbukitan dengan panorama alam dan titik pandang yang menarik untuk fotografi.",
+rating:4.4,
+pengunjung_per_bulan:3500
+},
+
+{
+id:11,
+nama:"Kebun Binatang Taman Rimbo",
+kategori:"Alam",
+lat:-1.6207,
+lng:103.6031,
+deskripsi:"Koleksi satwa lokal dan nasional dalam kawasan wisata edukatif keluarga.",
+rating:4.2,
+pengunjung_per_bulan:8500
+},
+
+{
+id:12,
+nama:"Menara Gentala Arasy",
+kategori:"Budaya",
+lat:-1.5893,
+lng:103.6160,
+deskripsi:"Menara ikonik yang menampilkan sejarah perkembangan Islam dan budaya Melayu Jambi.",
+rating:4.6,
+pengunjung_per_bulan:14000
+},
+
+{
+id:13,
+nama:"Kampung Arab Melayu",
+kategori:"Budaya",
+lat:-1.5901,
+lng:103.6185,
+deskripsi:"Permukiman bersejarah yang mempertahankan budaya Melayu dan Arab di Kota Jambi.",
+rating:4.4,
+pengunjung_per_bulan:6000
+},
+
+{
+id:14,
+nama:"Taman Jaksa",
+kategori:"Budaya",
+lat:-1.6024,
+lng:103.6167,
+deskripsi:"Ruang terbuka publik yang menjadi pusat kegiatan masyarakat dan pertunjukan seni.",
+rating:4.1,
+pengunjung_per_bulan:4500
+},
+
+{
+id:15,
+nama:"Masjid Seribu Tiang",
+kategori:"Religi",
+lat:-1.4934,
+lng:103.6682,
+deskripsi:"Masjid terkenal di kawasan Muaro Jambi dengan arsitektur khas dan suasana religius.",
+rating:4.8,
+pengunjung_per_bulan:11000
+},
+
+{
+id:16,
+nama:"Danau Tangkas",
+kategori:"Alam",
+lat:-1.7605,
+lng:103.5308,
+deskripsi:"Danau alami dengan panorama hijau dan suasana yang tenang untuk wisata alam.",
+rating:4.3,
+pengunjung_per_bulan:3000
+},
+
+{
+id:17,
+nama:"Candi Kedaton",
+kategori:"Sejarah",
+lat:-1.4957,
+lng:103.6701,
+deskripsi:"Bagian dari kompleks Percandian Muaro Jambi yang menyimpan jejak peradaban kuno.",
+rating:4.7,
+pengunjung_per_bulan:6000
+},
+
+{
+id:18,
+nama:"Rumah Batu Olak Kemang",
+kategori:"Sejarah",
+lat:-1.6834,
+lng:103.6471,
+deskripsi:"Situs peninggalan sejarah yang berkaitan dengan kebudayaan Melayu Jambi.",
+rating:4.2,
+pengunjung_per_bulan:2500
+},
+
+{
+id:19,
+nama:"Pematang Sulur Riverside",
+kategori:"Kuliner",
+lat:-1.6017,
+lng:103.6262,
+deskripsi:"Kawasan kuliner tepi sungai dengan berbagai makanan khas Jambi dan suasana malam yang menarik.",
+rating:4.5,
+pengunjung_per_bulan:12000
+},
+
+{
+id:20,
+nama:"Tugu Keris Siginjai",
+kategori:"Budaya",
+lat:-1.6084,
+lng:103.6142,
+deskripsi:"Monumen simbol Provinsi Jambi yang menjadi titik foto favorit wisatawan.",
+rating:4.3,
+pengunjung_per_bulan:8000
+}
+
+];
+
+/* ==========================================================
+   [3] KD-TREE ENGINE
+========================================================== */
+
+class KDNode{
+
+constructor(point, axis){
+
+this.point = point;
+this.axis = axis;
+
+this.left = null;
+this.right = null;
+
+}
+
+}
+
+class KDTree{
+
+constructor(points=[]){
+
+this.root = this.buildTree(points,0);
+
+}
+
+/* ==========================
+   BUILD TREE
+========================== */
+
+buildTree(points, depth){
+
+if(!points.length){
+return null;
+}
+
+const axis = depth % 2;
+
+const sorted = [...points].sort((a,b)=>{
+
+return axis === 0
+? a.lat - b.lat
+: a.lng - b.lng;
+
+});
+
+const median = Math.floor(sorted.length/2);
+
+const node = new KDNode(
+sorted[median],
+axis
+);
+
+node.left = this.buildTree(
+sorted.slice(0,median),
+depth+1
+);
+
+node.right = this.buildTree(
+sorted.slice(median+1),
+depth+1
+);
+
+return node;
+
+}
+
+/* ==========================
+   INSERT
+========================== */
+
+insert(point){
+
+const insertNode = (node, point, depth)=>{
+
+if(!node){
+
+return new KDNode(
+point,
+depth % 2
+);
+
+}
+
+const axis = node.axis;
+
+const valueNode =
+axis===0
+? node.point.lat
+: node.point.lng;
+
+const valuePoint =
+axis===0
+? point.lat
+: point.lng;
+
+if(valuePoint < valueNode){
+
+node.left =
+insertNode(
+node.left,
+point,
+depth+1
+);
+
+}else{
+
+node.right =
+insertNode(
+node.right,
+point,
+depth+1
+);
+
+}
+
+return node;
+
+};
+
+this.root =
+insertNode(
+this.root,
+point,
+0
+);
+
+}
+
+/* ==========================
+   KNN SEARCH
+========================== */
+
+nearestNeighbor(query,k=5){
+
+    const best = [];
+
+    const search = (node)=>{
+
+        if(!node) return;
+
+        const axis = node.axis;
+
+        const distance = haversine(
+            query.lat,
+            query.lng,
+            node.point.lat,
+            node.point.lng
+        );
+
+        best.push({
+            ...node.point,
+            distance
+        });
+
+        best.sort(
+            (a,b)=>a.distance-b.distance
+        );
+
+        if(best.length > k){
+            best.pop();
+        }
+
+        const queryValue =
+            axis===0
+            ? query.lat
+            : query.lng;
+
+        const nodeValue =
+            axis===0
+            ? node.point.lat
+            : node.point.lng;
+
+        const nearBranch =
+            queryValue < nodeValue
+            ? node.left
+            : node.right;
+
+        const farBranch =
+            queryValue < nodeValue
+            ? node.right
+            : node.left;
+
+        search(nearBranch);
+
+        const axisDistance =
+            Math.abs(queryValue-nodeValue)
+            *111;
+
+        const worstDistance =
+            best.length < k
+            ? Infinity
+            : best[best.length-1].distance;
+
+        if(axisDistance < worstDistance){
+
+            search(farBranch);
+
+        }
+
+    };
+
+    search(this.root);
+
+    return best;
+
+}
+
+/* ==========================
+   RANGE SEARCH
+========================== */
+
+rangeSearch(center,radiusKm){
+
+    const results = [];
+
+    const search = (node)=>{
+
+        if(!node) return;
+
+        const distance = haversine(
+
+            center.lat,
+            center.lng,
+
+            node.point.lat,
+            node.point.lng
+
+        );
+
+        if(distance <= radiusKm){
+
+            results.push({
+
+                ...node.point,
+                distance
+
+            });
+
+        }
+
+        const axis = node.axis;
+
+        const centerValue =
+            axis===0
+            ? center.lat
+            : center.lng;
+
+        const nodeValue =
+            axis===0
+            ? node.point.lat
+            : node.point.lng;
+
+        const radiusDegree =
+            radiusKm / 111;
+
+        if(centerValue-radiusDegree <= nodeValue){
+
+            search(node.left);
+
+        }
+
+        if(centerValue+radiusDegree >= nodeValue){
+
+            search(node.right);
+
+        }
+
+    };
+
+    search(this.root);
+
+    results.sort(
+        (a,b)=>a.distance-b.distance
+    );
+
+    return results;
+}
+}
+/* ==========================================================
+   BAGIAN 3:
+   HAVERSINE + SPATIAL UTILITIES
+========================================================== */
+/* ==========================================================
+   [4] HAVERSINE & SPATIAL UTILS
+========================================================== */
+
+/* ==========================
+   HAVERSINE FORMULA
+   Semua jarak dalam KM
+========================== */
+
+function haversine(
+    lat1,
+    lng1,
+    lat2,
+    lng2
+){
+
+    const R = 6371;
+
+    const dLat =
+        (lat2-lat1) *
+        Math.PI / 180;
+
+    const dLng =
+        (lng2-lng1) *
+        Math.PI / 180;
+
+    const a =
+        Math.sin(dLat/2) *
+        Math.sin(dLat/2)
+
+        +
+
+        Math.cos(lat1*Math.PI/180)
+        *
+        Math.cos(lat2*Math.PI/180)
+
+        *
+
+        Math.sin(dLng/2)
+        *
+        Math.sin(dLng/2);
+
+    const c =
+        2 *
+        Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(1-a)
+        );
+
+    return R * c;
+}
+
+/* ==========================
+   FORMAT JARAK
+========================== */
+
+function formatDistance(km){
+
+    if(km < 1){
+
+        return `${Math.round(km*1000)} m`;
+
+    }
+
+    return `${km.toFixed(2)} km`;
+
+}
+
+/* ==========================
+   FORMAT BINTANG
+========================== */
+
+function getStarRating(rating){
+
+    const full =
+        Math.floor(rating);
+
+    let stars = "";
+
+    for(let i=0;i<full;i++){
+
+        stars += "★";
+
+    }
+
+    while(stars.length < 5){
+
+        stars += "☆";
+
+    }
+
+    return stars;
+
+}
+
+/* ==========================
+   WARNA KATEGORI
+========================== */
+
+function getCategoryColor(category){
+
+    return (
+        CATEGORY_COLORS[category]
+        || "#00FFD1"
+    );
+
+}
+
+/* ==========================
+   DEBOUNCE
+========================== */
+
+function debounce(
+    callback,
+    delay=150
+){
+
+    let timer;
+
+    return (...args)=>{
+
+        clearTimeout(timer);
+
+        timer =
+            setTimeout(
+                ()=>callback(...args),
+                delay
+            );
+
+    };
+
+}
+
+/* ==========================
+   FILTER KATEGORI AKTIF
+========================== */
+
+function getActiveCategories(){
+
+    const boxes =
+        document.querySelectorAll(
+            '.category-grid input[type="checkbox"]'
+        );
+
+    return [...boxes]
+    .filter(c=>c.checked)
+    .map(c=>c.value);
+
+}
+
+/* ==========================
+   CEK KATEGORI
+========================== */
+
+function isCategoryVisible(kategori){
+
+    return getActiveCategories()
+    .includes(kategori);
+
+}
+
+/* ==========================
+   FILTER NAMA
+========================== */
+
+function filterByName(keyword){
+
+    keyword =
+        keyword
+        .toLowerCase()
+        .trim();
+
+    return WISATA_DATA.filter(item=>{
+
+        return item.nama
+        .toLowerCase()
+        .includes(keyword);
+
+    });
+
+}
+
+/* ==========================
+   GENERATOR LINGKARAN GEOJSON
+========================== */
+
+function createCircleGeoJSON(
+    centerLng,
+    centerLat,
+    radiusKm,
+    points=64
+){
+
+    const coordinates = [];
+
+    const earthRadius = 6371;
+
+    const distance =
+        radiusKm /
+        earthRadius;
+
+    const lat =
+        centerLat *
+        Math.PI / 180;
+
+    const lng =
+        centerLng *
+        Math.PI / 180;
+
+    for(let i=0;i<=points;i++){
+
+        const bearing =
+            (i * 360 / points)
+            *
+            Math.PI/180;
+
+        const lat2 =
+            Math.asin(
+                Math.sin(lat)
+                *
+                Math.cos(distance)
+
+                +
+
+                Math.cos(lat)
+                *
+                Math.sin(distance)
+                *
+                Math.cos(bearing)
+            );
+
+        const lng2 =
+            lng +
+            Math.atan2(
+                Math.sin(bearing)
+                *
+                Math.sin(distance)
+                *
+                Math.cos(lat),
+
+                Math.cos(distance)
+                -
+                Math.sin(lat)
+                *
+                Math.sin(lat2)
+            );
+
+        coordinates.push([
+
+            lng2 * 180/Math.PI,
+            lat2 * 180/Math.PI
+
+        ]);
+
+    }
+
+    return {
+
+        type:"Feature",
+
+        geometry:{
+
+            type:"Polygon",
+
+            coordinates:[
+                coordinates
+            ]
+
+        }
+
+    };
+
+}
+
+/* ==========================
+   ANIMASI NILAI
+========================== */
+
+function animateNumber(
+    start,
+    end,
+    duration,
+    callback
+){
+
+    const startTime =
+        performance.now();
+
+    function frame(now){
+
+        const progress =
+            Math.min(
+                (now-startTime)/duration,
+                1
+            );
+
+        const value =
+            start +
+            (
+                (end-start)
+                *
+                progress
+            );
+
+        callback(value);
+
+        if(progress < 1){
+
+            requestAnimationFrame(
+                frame
+            );
+
+        }
+
+    }
+
+    requestAnimationFrame(
+        frame
+    );
+
+}
+
+/* ==========================
+   FLY TO MARKER
+========================== */
+
+function flyToLocation(
+    lng,
+    lat,
+    zoom=15
+){
+
+    if(!map) return;
+
+    map.flyTo({
+
+        center:[lng,lat],
+
+        zoom,
+
+        pitch:55,
+
+        bearing:0,
+
+        speed:1.2,
+
+        curve:1.4,
+
+        essential:true
+
+    });
+
+}
+
+/* ==========================
+   HITUNG JARAK USER
+========================== */
+
+function distanceFromUser(point){
+
+    return haversine(
+
+        userLocation.lat,
+        userLocation.lng,
+
+        point.lat,
+        point.lng
+
+    );
+
+}
+
+/* ==========================
+   SORT BERDASARKAN USER
+========================== */
+
+function sortByDistance(points){
+
+    return [...points]
+
+    .map(item=>({
+
+        ...item,
+
+        distance:
+            distanceFromUser(item)
+
+    }))
+
+    .sort(
+        (a,b)=>
+        a.distance-b.distance
+    );
+
+}
+
+/* ==========================
+   FORMAT COUNTER
+========================== */
+
+function updateCounterText(
+    total,
+    radius
+){
+
+    const el =
+        document.getElementById(
+            "radiusCounter"
+        );
+
+    if(!el) return;
+
+    el.textContent =
+        `${total} lokasi ditemukan dalam ${radius} km`;
+
+}
+
+/* ==========================================================
+   [5] MAP ENGINE (MapLibre INIT)
+========================================================== */
+
+function initializeMap(){
+
+    map = new maplibregl.Map({
+
+        container:"map",
+
+        style:
+        "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+
+        center:CONFIG.DEFAULT_CENTER,
+
+        zoom:CONFIG.DEFAULT_ZOOM,
+
+        pitch:CONFIG.DEFAULT_PITCH,
+
+        bearing:CONFIG.DEFAULT_BEARING,
+
+        antialias:true
+
+    });
+
+    map.addControl(
+        new maplibregl.NavigationControl(),
+        "top-right"
+    );
+
+    map.on(
+        "load",
+        ()=>{
+
+            console.log(
+                "Map berhasil dimuat"
+            );
+
+        }
+    );
+
+}
+
+/* ==========================================================
+   BAGIAN 4:
+   GEOLOCATION
+   USER MARKER
+   MARKER SYSTEM
+========================================================== */
+/* ==========================================================
+   [6] MARKER SYSTEM
+========================================================== */
+
+/* ==========================
+   AMBIL GEOLOCATION USER
+========================== */
+
+async function getUserLocation(){
+
+    return new Promise((resolve)=>{
+
+        if(!navigator.geolocation){
+
+            resolve({
+                lat:-1.6101,
+                lng:103.6131
+            });
+
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+
+            position=>{
+
+                resolve({
+
+                    lat:position.coords.latitude,
+                    lng:position.coords.longitude
+
+                });
+
+            },
+
+            ()=>{
+
+                resolve({
+
+                    lat:-1.6101,
+                    lng:103.6131
+
+                });
+
+            },
+
+            {
+
+                enableHighAccuracy:true,
+                timeout:10000,
+                maximumAge:0
+
+            }
+
+        );
+
+    });
+
+}
+
+/* ==========================
+   MARKER USER
+========================== */
+
+function createUserMarker(){
+
+    if(userMarker){
+
+        userMarker.remove();
+
+    }
+
+    const el =
+        document.createElement("div");
+
+    el.className =
+        "marker-user";
+
+    userMarker =
+        new maplibregl.Marker({
+
+            element:el
+
+        })
+
+        .setLngLat([
+            userLocation.lng,
+            userLocation.lat
+        ])
+
+        .addTo(map);
+
+}
+
+/* ==========================
+   UPDATE PANEL KOORDINAT
+========================== */
+
+function updateCoordinatePanel(){
+
+    const panel =
+        document.getElementById(
+            "liveCoord"
+        );
+
+    if(!panel) return;
+
+    panel.innerHTML =
+
+        `● ${userLocation.lat.toFixed(5)}° / ${userLocation.lng.toFixed(5)}°`;
+
+}
+
+/* ==========================
+   BUAT ELEMEN MARKER
+========================== */
+
+function createMarkerElement(data){
+
+    const marker =
+        document.createElement("div");
+
+    marker.className =
+        "marker-lokasi";
+
+    const color =
+        getCategoryColor(
+            data.kategori
+        );
+
+    const size =
+        12 +
+        (data.rating * 4);
+
+    marker.style.width =
+        `${size}px`;
+
+    marker.style.height =
+        `${size}px`;
+
+    marker.style.background =
+        color;
+
+    marker.style.boxShadow =
+        `0 0 12px ${color}`;
+
+    marker.style.opacity =
+        "0";
+
+    return marker;
+
+}
+
+/* ==========================
+   BADGE KATEGORI
+========================== */
+
+function buildCategoryBadge(data){
+
+    return `
+        <span
+        style="
+            background:${getCategoryColor(data.kategori)};
+            color:black;
+            padding:3px 8px;
+            border-radius:999px;
+            font-size:11px;
+            font-weight:700;
+        ">
+            ${data.kategori}
+        </span>
+    `;
+
+}
+
+/* ==========================
+   POPUP HTML
+========================== */
+
+function createPopupHTML(data){
+
+    const dist =
+        formatDistance(
+            distanceFromUser(data)
+        );
+
+    return `
+
+    <div class="popup-content">
+
+        <div class="popup-title">
+
+            ${data.nama}
+
+        </div>
+
+        ${buildCategoryBadge(data)}
+
+        <div style="margin-top:8px">
+
+            ${getStarRating(data.rating)}
+            (${data.rating})
+
+        </div>
+
+        <div class="popup-desc">
+
+            ${data.deskripsi}
+
+        </div>
+
+        <div style="margin-top:10px">
+
+            📍 ${dist} dari kamu
+
+        </div>
+
+        <button
+            class="route-btn"
+            onclick="showRoute(${data.id})">
+
+            🧭 Rute ke Sini
+
+        </button>
+
+    </div>
+
+    `;
+
+}
+
+/* ==========================
+   BUAT MARKER WISATA
+========================== */
+
+function createWisataMarker(data,index=0){
+
+    const el =
+        createMarkerElement(data);
+
+    const popup =
+        new maplibregl.Popup({
+
+            offset:20
+
+        })
+
+        .setHTML(
+            createPopupHTML(data)
+        );
+
+    const marker =
+        new maplibregl.Marker({
+
+            element:el
+
+        })
+
+        .setLngLat([
+            data.lng,
+            data.lat
+        ])
+
+        .setPopup(
+            popup
+        )
+
+        .addTo(map);
+
+    setTimeout(()=>{
+
+        el.style.transition =
+            "all .35s ease";
+
+        el.style.opacity =
+            "1";
+
+    },index*50);
+
+    wisataMarkers.push({
+
+        data,
+
+        marker,
+
+        element:el
+
+    });
+
+}
+
+/* ==========================
+   LOAD SEMUA MARKER
+========================== */
+
+function loadWisataMarkers(){
+
+    wisataMarkers.forEach(m=>{
+
+        m.marker.remove();
+
+    });
+
+    wisataMarkers = [];
+
+    WISATA_DATA.forEach(
+
+        (item,index)=>{
+
+            createWisataMarker(
+                item,
+                index
+            );
+
+        }
+
+    );
+
+}
+
+/* ==========================
+   FILTER MARKER KATEGORI
+========================== */
+
+function applyCategoryFilter(){
+
+    wisataMarkers.forEach(item=>{
+
+        const visible =
+            isCategoryVisible(
+                item.data.kategori
+            );
+
+        item.element.style.display =
+            visible
+            ? "block"
+            : "none";
+
+    });
+
+}
+
+/* ==========================
+   FILTER MARKER NAMA
+========================== */
+
+function applySearchFilter(keyword){
+
+    wisataMarkers.forEach(item=>{
+
+        const visible =
+
+            item.data.nama
+            .toLowerCase()
+            .includes(
+                keyword.toLowerCase()
+            );
+
+        item.element.style.display =
+            visible
+            ? "block"
+            : "none";
+
+    });
+
+}
+
+/* ==========================
+   RESET HIGHLIGHT MARKER
+========================== */
+
+function resetMarkerHighlight(){
+
+    wisataMarkers.forEach(item=>{
+
+        item.element.style.opacity =
+            "1";
+
+        item.element.style.transform =
+            "scale(1)";
+
+    });
+
+}
+
+/* ==========================
+   HIGHLIGHT HASIL KNN
+========================== */
+
+function highlightNearestResults(results){
+
+    resetMarkerHighlight();
+
+    const opacityLevels =
+    [1,0.9,0.8,0.7,0.6];
+
+    results.forEach((item,index)=>{
+
+        const markerObj =
+            wisataMarkers.find(
+
+                m=>
+                m.data.id===item.id
+
+            );
+
+        if(!markerObj) return;
+
+        markerObj.element.style.opacity =
+            opacityLevels[index] ?? 1;
+
+        markerObj.element.style.transform =
+            index===0
+            ? "scale(1.8)"
+            : "scale(1.2)";
+
+        if(index===0){
+
+            markerObj.element.style.boxShadow =
+            `0 0 20px ${getCategoryColor(item.kategori)},
+             0 0 40px ${getCategoryColor(item.kategori)}`;
+
+        }
+
+    });
+
+}
+
+/* ==========================
+   FLY TO MARKER
+========================== */
+
+function focusMarker(id){
+
+    const item =
+        WISATA_DATA.find(
+            x=>x.id===id
+        );
+
+    if(!item) return;
+
+    flyToLocation(
+        item.lng,
+        item.lat,
+        15
+    );
+
+}
+
+/* ==========================================================
+   [7] QUERY ENGINE
+========================================================== */
+/* ==========================
+   KNN TERDEKAT
+========================== */
+
+function findNearest(k=5){
+
+    if(!kdTree) return [];
+
+    const nearest =
+        kdTree.nearestNeighbor({
+
+            lat:userLocation.lat,
+            lng:userLocation.lng
+
+        },k)
+
+        .filter(item=>
+            isCategoryVisible(
+                item.kategori
+            )
+        );
+
+    highlightNearestResults(
+        nearest
+    );
+
+    renderKNNResults(
+        nearest
+    );
+
+    return nearest;
+
+}
+
+/* ==========================
+   CARI DALAM RADIUS
+========================== */
+
+function findInRadius(radiusKm){
+
+    if(!kdTree) return [];
+
+    const results =
+        kdTree.rangeSearch({
+
+            lat:userLocation.lat,
+            lng:userLocation.lng
+
+        },radiusKm)
+
+        .filter(item=>
+            isCategoryVisible(
+                item.kategori
+            )
+        );
+
+    updateCounterText(
+        results.length,
+        radiusKm
+    );
+
+    updateRadiusMarkerState(
+        results
+    );
+
+    return results;
+
+}
+
+/* ==========================
+   UPDATE VISUAL RADIUS
+========================== */
+
+function updateRadiusMarkerState(results){
+
+    const insideIds =
+        new Set(
+            results.map(
+                x=>x.id
+            )
+        );
+
+    wisataMarkers.forEach(item=>{
+
+        if(
+            insideIds.has(
+                item.data.id
+            )
+        ){
+
+            item.element.style.opacity =
+                "1";
+
+            item.element.style.animation =
+                "pulseMarker 2s infinite";
+
+        }
+
+        else{
+
+            item.element.style.opacity =
+                ".15";
+
+            item.element.style.animation =
+                "none";
+
+        }
+
+    });
+
+}
+
+/* ==========================
+   GAMBAR LINGKARAN RADIUS
+========================== */
+
+function updateRadiusCircle(radiusKm){
+
+    if(!map) return;
+
+    const geojson =
+        createCircleGeoJSON(
+
+            userLocation.lng,
+            userLocation.lat,
+            radiusKm
+
+        );
+
+    if(
+        map.getSource(
+            "radius-source"
+        )
+    ){
+
+        map.getSource(
+            "radius-source"
+        ).setData(
+            geojson
+        );
+
+        return;
+    }
+
+    map.addSource(
+        "radius-source",
+        {
+            type:"geojson",
+            data:geojson
+        }
+    );
+
+    map.addLayer({
+
+        id:"radius-fill",
+
+        type:"fill",
+
+        source:"radius-source",
+
+        paint:{
+
+            "fill-color":"#00FFD1",
+
+            "fill-opacity":0.05
+
+        }
+
+    });
+
+    map.addLayer({
+
+        id:"radius-line",
+
+        type:"line",
+
+        source:"radius-source",
+
+        paint:{
+
+            "line-color":"#00FFD1",
+
+            "line-width":2,
+
+            "line-opacity":0.8
+
+        }
+
+    });
+
+}
+
+/* ==========================
+   PANEL HASIL KNN
+========================== */
+
+function renderKNNResults(results){
+
+    const container =
+        document.getElementById(
+            "resultsContainer"
+        );
+
+    container.innerHTML = "";
+
+    results.forEach((item,index)=>{
+
+        const div =
+            document.createElement(
+                "div"
+            );
+
+        div.className =
+            "result-item";
+      const panelOpacity = [
+    1,
+    0.9,
+    0.8,
+    0.7,
+    0.6
+];
+
+div.style.opacity =
+    panelOpacity[index] ?? 1;
+
+        const rank =
+            String(index+1)
+            .padStart(2,"0");
+
+        const badgeColor =
+            getCategoryColor(
+                item.kategori
+            );
+
+        div.innerHTML = `
+
+            <div
+            class="result-name">
+
+                ${rank}
+                ${item.nama}
+
+            </div>
+
+            <div
+            style="
+            margin-top:6px">
+
+                <span
+                style="
+                background:${badgeColor};
+                color:black;
+                padding:2px 8px;
+                border-radius:999px;
+                font-size:11px;
+                font-weight:700;
+                ">
+                    ${item.kategori}
+                </span>
+
+            </div>
+
+            <div
+            style="
+            margin-top:6px;
+            color:#FFD700;
+            ">
+
+                ${getStarRating(item.rating)}
+                ${item.rating}
+
+            </div>
+
+            <div
+            class="result-distance">
+
+                ${formatDistance(
+                    item.distance
+                )}
+
+            </div>
+
+            ${
+                index===0
+                ?
+                `<div style="
+                color:#00FFD1;
+                margin-top:6px;
+                font-size:11px;
+                font-weight:700;
+                ">
+                TERDEKAT
+                </div>`
+                :
+                ""
+            }
+
+        `;
+ if(index===0){
+
+    div.style.border =
+        "1px solid #00FFD1";
+
+    div.style.boxShadow =
+        "0 0 15px rgba(0,255,209,.4)";
+
+}
+        div.onclick = ()=>{
+
+            focusMarker(
+                item.id
+            );
+
+        };
+
+        container.appendChild(
+            div
+        );
+
+        setTimeout(()=>{
+
+            div.classList.add(
+                "show"
+            );
+
+        },index*80);
+
+    });
+
+}
+
+/* ==========================
+   CLEAR ROUTE
+========================== */
+
+function clearRoute(){
+
+    if(
+        map.getSource(
+            "route-source"
+        )
+    ){
+
+        if(
+            map.getLayer(
+                "route-line"
+            )
+        ){
+
+            map.removeLayer(
+                "route-line"
+            );
+
+        }
+
+        map.removeSource(
+            "route-source"
+        );
+
+    }
+
+    const info =
+        document.getElementById(
+            "routeInfo"
+        );
+
+    info.classList.remove(
+        "show"
+    );
+
+}
 
 /* ==========================
    ROUTE ORS
