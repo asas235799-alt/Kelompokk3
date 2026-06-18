@@ -829,9 +829,6 @@ body{
 </div>
     </div>
 </div>
-<!-- =======================================================
-     PANEL HASIL KNN
-======================================================= -->
 
 <!-- =======================================================
      ROUTE INFO
@@ -854,7 +851,7 @@ body{
 <script>
 
 /* ==========================================================
-   [1] KONFIGURASI & KONSTANTA
+    KONFIGURASI & KONSTANTA
 ========================================================== */
 
 const CONFIG = {
@@ -906,11 +903,9 @@ let currentMaxPrice = 1000000;
 
 let currentMinRating = 0;
   
+
 /* ==========================================================
-   BAGIAN 2 AKAN DIMULAI DI SINI
-========================================================== */
-/* ==========================================================
-   [2] DATA WISATA JAMBI
+   DATA 
 ========================================================== */
 
 const WISATA_DATA = [
@@ -1397,10 +1392,6 @@ point,
 
 }
 
-/* ==========================
-   KNN SEARCH
-========================== */
-
 
 /* ==========================
    RANGE SEARCH
@@ -1473,16 +1464,13 @@ rangeSearch(center,radiusKm){
     return results;
 }
 }
+
 /* ==========================================================
-   BAGIAN 3:
-   HAVERSINE + SPATIAL UTILITIES
-========================================================== */
-/* ==========================================================
-   [4] HAVERSINE & SPATIAL UTILS
+   HAVERSINE & SPATIAL UTILS
 ========================================================== */
 
 /* ==========================
-   HAVERSINE FORMULA
+   
    Semua jarak dalam KM
 ========================== */
 
@@ -1611,7 +1599,7 @@ function debounce(
 }
 
 /* ==========================
-   FILTER KATEGORI AKTIF
+   FILTER KATEGORI 
 ========================== */
 
 function getActiveCategories(){
@@ -1660,7 +1648,7 @@ function filterByName(keyword){
 }
 
 /* ==========================
-   GENERATOR LINGKARAN GEOJSON
+    LINGKARAN GEOJSON
 ========================== */
 
 function createCircleGeoJSON(
@@ -1969,7 +1957,7 @@ function updateCounterText(
 }
 
 /* ==========================================================
-   [5] MAP ENGINE (MapLibre INIT)
+    MAP 
 ========================================================== */
 
 function initializeMap(){
@@ -2012,17 +2000,11 @@ function initializeMap(){
 }
 
 /* ==========================================================
-   BAGIAN 4:
-   GEOLOCATION
-   USER MARKER
    MARKER SYSTEM
-========================================================== */
-/* ==========================================================
-   [6] MARKER SYSTEM
 ========================================================== */
 
 /* ==========================
-   AMBIL GEOLOCATION USER
+   GEOLOCATION USER
 ========================== */
 
 async function getUserLocation(){
@@ -2131,7 +2113,7 @@ function updateCoordinatePanel(){
 }
 
 /* ==========================
-   BUAT ELEMEN MARKER
+    ELEMEN MARKER
 ========================== */
 
 function createMarkerElement(data){
@@ -2274,7 +2256,7 @@ function createPopupHTML(data){
 }
 
 /* ==========================
-   BUAT MARKER WISATA
+   tempat
 ========================== */
 
 function createWisataMarker(data,index=0){
@@ -2421,16 +2403,7 @@ function refreshAllFilters(){
     );
 
 }
-/* ==========================
-   FILTER MARKER NAMA
-========================== */
 
-/* ==========================
-   RESET HIGHLIGHT MARKER
-========================== */
-/* ==========================
-   HIGHLIGHT HASIL KNN
-========================== */
 
 /* ==========================
    FLY TO MARKER
@@ -2453,12 +2426,7 @@ function focusMarker(id){
 
 }
 
-/* ==========================================================
-   [7] QUERY ENGINE
-========================================================== */
-/* ==========================
-   KNN TERDEKAT
-========================== */
+
 
 
 /* ==========================
@@ -2604,9 +2572,7 @@ function updateRadiusCircle(radiusKm){
 
 }
 
-/* ==========================
-   PANEL HASIL KNN
-========================== */
+
 
 
 /* ==========================
@@ -3107,10 +3073,10 @@ function showRouteInfo(route){
 }
 
 /* ==========================================================
-   [8] UI ENGINE
+   UI 
 ========================================================== */
 /* ==========================
-   EVENT LISTENER
+   evsnt LISTENER
 ========================== */
 
 function setupEventListeners(){
@@ -3416,7 +3382,7 @@ function animatePanels(){
 }
 
 /* ==========================================================
-   [9] ANIMASI & MICROINTERACTION
+   ANIMASI & MICROINTERACTION
 ========================================================== */
 
 /* ==========================
@@ -3502,7 +3468,7 @@ function enableMarkerEffects(){
 }
 
 /* ==========================================================
-   [10] INIT
+   INIT
 ========================================================== */
 
 async function initializeSystem(){
